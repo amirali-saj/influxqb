@@ -2,6 +2,7 @@ package qb
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/influxdata/influxdb/models"
@@ -9,10 +10,10 @@ import (
 	"github.com/mdaliyan/influxqb/inflx"
 )
 
-func NewHistogram(database string) *HistogramBuilder {
+func NewQuery(database, measurement, rpName string) *HistogramBuilder {
 	h := HistogramBuilder{}
 	h.database = database
-	h.From(database)
+	h.From(rpName, measurement)
 	h.summaries = map[string]string{}
 	h.dataSets = map[string]string{}
 	return &h
@@ -20,6 +21,7 @@ func NewHistogram(database string) *HistogramBuilder {
 
 type HistogramBuilder struct {
 	database    string
+	measurement string
 	timeRange   string
 	fill        string
 	groupBy     string
@@ -42,7 +44,7 @@ func (h *HistogramBuilder) Export() (r Response) {
 		Summary:  h.Response.GetSummary(),
 		DataSets: DataSets{},
 	}
-	for key, _ := range h.dataSets {
+	for key := range h.dataSets {
 		r.DataSets[key] = h.Response.GetTimeSeriesFor(key)
 	}
 	return
@@ -56,6 +58,7 @@ func (h *HistogramBuilder) Do(db string) (err error) {
 			err = errors.New(r[0].Err)
 			return
 		}
+		fmt.Println(db, h.RawResponse, r, err)
 		h.Response = NewHistogramData(r)
 		return
 	}
@@ -82,7 +85,7 @@ func (h *HistogramBuilder) buildQuery(set map[string]string, groupBy string) str
 		}
 		selects = append(selects, sel)
 	}
-	q := `select ` + strings.Join(selects, ", ") + ` from ` + h.database
+	q := `select ` + strings.Join(selects, ", ") + ` from ` + h.measurement
 	if h.where != nil {
 		q += ` where ` + strings.Join(h.where, " and ")
 	}
@@ -95,14 +98,16 @@ func (h *HistogramBuilder) buildQuery(set map[string]string, groupBy string) str
 	return q
 }
 
-func (h *HistogramBuilder) From(database string) *HistogramBuilder {
-	if h.total {
-		h.database = "sanjagh.total_" + database
-	} else {
-		h.database = "sanjagh." + database
+func (h *HistogramBuilder) From(rpName, measurement string) *HistogramBuilder {
+	if rpName != "" {
+		rpName += "."
 	}
-	// todo : remove this bottom line
-	h.database = "sanjagh." + database
+	if h.total {
+		h.measurement = rpName + "total_" + measurement
+	} else {
+		h.measurement = rpName + measurement
+	}
+	fmt.Println(h.measurement)
 	return h
 }
 
@@ -121,32 +126,32 @@ func (h *HistogramBuilder) GroupBy(s string) *HistogramBuilder {
 	return h
 }
 
-func (h *HistogramBuilder) GroupMinutely() *HistogramBuilder {
-	h.From("minutely.statistics")
+func (h *HistogramBuilder) GroupMinutely(rpName string) *HistogramBuilder {
+	h.From(rpName, "minutely.statistics")
 	h.groupBy = " time(60s) "
 	return h
 }
 
-func (h *HistogramBuilder) GroupHourly() *HistogramBuilder {
-	h.From("hourly.statistics")
+func (h *HistogramBuilder) GroupHourly(rpName string) *HistogramBuilder {
+	h.From(rpName, "hourly.statistics")
 	h.groupBy = " time(1h) "
 	return h
 }
 
-func (h *HistogramBuilder) GroupDaily() *HistogramBuilder {
-	h.From("daily.statistics")
+func (h *HistogramBuilder) GroupDaily(rpName string) *HistogramBuilder {
+	h.From(rpName, "daily.statistics")
 	h.groupBy = " time(1d) "
 	return h
 }
 
-func (h *HistogramBuilder) GroupMonthly() *HistogramBuilder {
-	h.From("daily.statistics")
+func (h *HistogramBuilder) GroupMonthly(rpName string) *HistogramBuilder {
+	h.From(rpName, "daily.statistics")
 	h.groupBy = " time(30d) "
 	return h
 }
 
-func (h *HistogramBuilder) GroupYearly() *HistogramBuilder {
-	h.From("daily.statistics")
+func (h *HistogramBuilder) GroupYearly(rpName string) *HistogramBuilder {
+	h.From(rpName, "daily.statistics")
 	h.groupBy = " time(365d) "
 	return h
 }

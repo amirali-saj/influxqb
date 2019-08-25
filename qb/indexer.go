@@ -43,9 +43,9 @@ func (i *Indexer) setData(data []client.Result) {
 	}
 }
 
-func (i *Indexer) GetTimeSeriesFor(key string) ([][]interface{}) {
+func (i *Indexer) GetTimeSeriesFor(key string) [][]interface{} {
 	index, ok := i.indexes[key]
-	if ! ok {
+	if !ok {
 		return [][]interface{}{}
 	}
 	return i.data[index].Series[0].Values
