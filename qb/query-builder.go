@@ -1,19 +1,16 @@
 package qb
 
 import (
-	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/influxdata/influxdb/models"
 	"github.com/influxdata/influxdb1-client/v2"
-	"github.com/mdaliyan/influxqb/inflx"
 )
 
-func NewQuery(database, measurement, rpName string) *HistogramBuilder {
+func NewQuery(database, retentionPolicy, measurement string) *HistogramBuilder {
 	h := HistogramBuilder{}
 	h.database = database
-	h.From(rpName, measurement)
+	h.From(retentionPolicy, measurement)
 	h.summaries = map[string]string{}
 	h.dataSets = map[string]string{}
 	return &h
@@ -25,18 +22,12 @@ type HistogramBuilder struct {
 	timeRange   string
 	fill        string
 	groupBy     string
-	total       bool
 	where       []string
 	sum         models.Row
 	dataSets    map[string]string
 	summaries   map[string]string
 	Response    *Indexer
 	RawResponse *client.Response
-}
-
-func (h *HistogramBuilder) Total(enabled bool) (r map[string]interface{}) {
-	h.total = enabled
-	return
 }
 
 func (h *HistogramBuilder) Export() (r Response) {
@@ -46,21 +37,6 @@ func (h *HistogramBuilder) Export() (r Response) {
 	}
 	for key := range h.dataSets {
 		r.DataSets[key] = h.Response.GetTimeSeriesFor(key)
-	}
-	return
-}
-
-func (h *HistogramBuilder) Do(db string) (err error) {
-	var r []client.Result
-	h.RawResponse, r, err = inflx.Query(db, h.Query())
-	if err == nil {
-		if r[0].Err != "" {
-			err = errors.New(r[0].Err)
-			return
-		}
-		fmt.Println(db, h.RawResponse, r, err)
-		h.Response = NewHistogramData(r)
-		return
 	}
 	return
 }
@@ -102,12 +78,8 @@ func (h *HistogramBuilder) From(rpName, measurement string) *HistogramBuilder {
 	if rpName != "" {
 		rpName += "."
 	}
-	if h.total {
-		h.measurement = rpName + "total_" + measurement
-	} else {
-		h.measurement = rpName + measurement
-	}
-	fmt.Println(h.measurement)
+
+	h.measurement = rpName + measurement
 	return h
 }
 

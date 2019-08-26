@@ -9,29 +9,29 @@ import (
 
 func main() {
 	inflx.Client = inflx.NewClient("http://localhost:8086", "", "")
-	stats := qb.NewQuery("sanjagh", "publishers", "").
+	q := qb.NewQuery("sanjagh", "publishers", "").
 		Where(`id='id8'`).
 		Where(`time > now()- 10d`).
 		GroupBy(`time(1d)`).
 		Fill(`0`)
 
-	stats.
+	q.
 		DataSet("clicks", "sum(click)").
 		DataSet("views", "sum(permutation_view)").
 		DataSet("network_income", "sum(network_income)").
 		DataSet("publisher_income", "sum(income)").
 		DataSet("unacceptable_clicks", "sum(bot_click) + sum(fraud) + sum(duplicate)")
 
-	stats.
+	q.
 		Summary("clicks", "sum(click)").
 		Summary("unacceptable_clicks", "sum(bot_click) + sum(fraud) + sum(duplicate)").
 		Summary("publisher_income", "sum(income)")
+	//
+	//if err := q.Do("sanjagh"); err != nil {
+	//	panic(err)
+	//}
 
-	if err := stats.Do("sanjagh"); err != nil {
-		panic(err)
-	}
-
-	b, _ := json.MarshalIndent(stats.Export(), "", "  ")
+	b, _ := json.MarshalIndent(q.Export(), "", "  ")
 	fmt.Println(string(b))
 
 }
