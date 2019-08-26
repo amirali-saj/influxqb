@@ -43,6 +43,35 @@ func (i *Indexer) setData(data []client.Result) {
 	}
 }
 
+func (i *Indexer) AddData(data []client.Result) {
+	i.data = data
+	//	i.indexes = map[string]int{}
+	//	i.config = map[string]map[string]interface{}{}
+	//	i.summary = models.Row {
+	//		Tags:    map[string]string{},
+	//		Columns: []string{},
+	//		Values:  [][]interface{}{},
+	//	}
+
+	for index, Row := range data {
+		if Row.Series != nil {
+			if len(Row.Series[0].Columns) == 2 && len(Row.Series[0].Values) != 1 {
+				// it's time dataSets
+				i.indexes[Row.Series[0].Columns[1]] = index
+			} else {
+				// it's summary     //= Row.Series[0]
+				for k, v := range Row.Series[0].Tags {
+					i.summary.Tags[k] = v
+
+				}
+				i.summary.Columns = append(i.summary.Columns, Row.Series[0].Columns...)
+				i.summary.Values = append(i.summary.Values, Row.Series[0].Values...)
+			}
+		}
+	}
+
+}
+
 func (i *Indexer) GetTimeSeriesFor(key string) [][]interface{} {
 	index, ok := i.indexes[key]
 	if !ok {

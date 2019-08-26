@@ -9,7 +9,7 @@ import (
 
 func NewQuery(database, retentionPolicy, measurement string) *HistogramBuilder {
 	h := HistogramBuilder{}
-	h.database = database
+	h.Database = database
 	h.From(retentionPolicy, measurement)
 	h.summaries = map[string]string{}
 	h.dataSets = map[string]string{}
@@ -17,7 +17,7 @@ func NewQuery(database, retentionPolicy, measurement string) *HistogramBuilder {
 }
 
 type HistogramBuilder struct {
-	database    string
+	Database    string
 	measurement string
 	timeRange   string
 	fill        string
