@@ -17,7 +17,7 @@ type queryResult struct {
 	summary  models.Row
 }
 
-func newHistogramData(data []client.Result) *queryResult {
+func newQueryResult(data []client.Result) *queryResult {
 	q := queryResult{}
 	q.setData(data)
 	return &q
@@ -102,8 +102,8 @@ func (qResult *queryResult) GetSummaryValue(key string) json.Number {
 	return json.Number("0")
 }
 
-func (qResult *queryResult) Export() (r response) {
-	r = response{
+func (qResult *queryResult) export() (r *response) {
+	r = &response{
 		Summary:  qResult.GetSummary(),
 		DataSets: dataSets{},
 	}

@@ -28,7 +28,7 @@ type queryBuilder struct {
 	response    *queryResult
 }
 
-func (query *queryBuilder) Query() string {
+func (query *queryBuilder) String() string {
 	var queries []string
 	for key, field := range query.dataSets {
 		queries = append(queries, query.buildQuery(map[string]string{key: field}, query.groupBy))

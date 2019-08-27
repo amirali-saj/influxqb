@@ -22,26 +22,26 @@ func (qr *queryRunner) Add(q *queryBuilder) *queryRunner {
 	return qr
 }
 
-func (qr *queryRunner) ExecuteQueries() (res *queryResult, err error) {
-
+func (qr *queryRunner) ExecuteQueries() (resp *response, err error) {
+	var res *queryResult
 	for i, query := range qr.queries {
 		r, queryErr := qr.Do(query)
 		err = queryErr
 
 		if i == 0 {
-			res = newHistogramData(r)
+			res = newQueryResult(r)
 			continue
 		}
 		res.addData(r)
 	}
 
-	return
+	return res.export(), err
 }
 
 //Runs a single queryBuilder's query.
 func (qr *queryRunner) Do(q *queryBuilder) (r []influx.Result, err error) {
 
-	_, results, err := query(qr.client, q.database, q.Query())
+	_, results, err := query(qr.client, q.database, q.String())
 	if err == nil {
 		if results[0].Err != "" {
 			err = errors.New(results[0].Err)

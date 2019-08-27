@@ -41,10 +41,12 @@ type response struct {
 	DataSets dataSets               `json:"sets"`
 }
 
-type walker func(dataSets dataSets) interface{}
+type walker func(interface{}) interface{}
 
-func (r *response) Calculate(as string, calc walker) {
-	r.Summary[as] = calc(r.DataSets)
+func (r *response) Walk(as string, calc walker) {
+	for _, dataset := range r.DataSets {
+		r.Summary[as] = calc(dataset)
+	}
 }
 
 func (r *response) Sum(from ...string) float64 {
@@ -55,6 +57,16 @@ func (r *response) Sum(from ...string) float64 {
 		}
 	}
 	return sum
+}
+
+func (r *response) Count(from ...string) int {
+	var count int
+	for _, fieldName := range from {
+		for range r.DataSets.Get(fieldName).Points() {
+			count++
+		}
+	}
+	return count
 }
 
 func (r *response) SetSummary(as string, data interface{}) {
