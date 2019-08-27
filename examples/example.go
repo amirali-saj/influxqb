@@ -2,15 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/mdaliyan/influxqb/inflx"
-	"github.com/mdaliyan/influxqb/qb"
-	"github.com/mdaliyan/influxqb/qr"
+	inflx "github.com/mdaliyan/influxqb"
 )
 
 func main() {
-
 	inflx.Client = inflx.NewClient("http://localhost:8086", "", "")
-	publishersQuery1 := qb.NewQuery("sanjagh", "", "publishers").
+	publishersQuery1 := inflx.NewQuery("sanjagh", "", "publishers").
 		Where(`time > now()- 10d`).
 		//GroupBy(`time(1d)`).
 		GroupBy(`"id"`).
@@ -27,7 +24,7 @@ func main() {
 		DataSet("views1", "sum(permutation_view)").
 		DataSet("network_income1", "sum(network_income)")
 
-	publishersQuery2 := qb.NewQuery("sanjagh", "", "publishers").
+	publishersQuery2 := inflx.NewQuery("sanjagh", "", "publishers").
 		Where(`id='id8'`).
 		Where(`time > now()- 1w`).
 		GroupBy(`time(1d)`).
@@ -44,7 +41,7 @@ func main() {
 		Summary("unacceptable_clicks", "sum(bot_click) + sum(fraud) + sum(duplicate)").
 		Summary("publisher_income", "sum(income)")
 
-	employeesQuery1 := qb.NewQuery("sanjagh", "", "employees").
+	employeesQuery1 := inflx.NewQuery("sanjagh", "", "employees").
 		Where(`time > now()- 10d`).
 		GroupBy(`time(1d)`).
 		Fill(`0`)
@@ -59,6 +56,15 @@ func main() {
 		Summary("hr_salary_budget", "sum(salary)").
 		Summary("minimum_salary", "min(salary)")
 
-	fmt.Println(qr.ExecuteQueries(employeesQuery1, publishersQuery2, publishersQuery1).String())
+	qr := inflx.NewQr()
+	qr.Add(employeesQuery1).
+		Add(publishersQuery1).
+		Add(publishersQuery2)
+	result, err := qr.ExecuteQueries()
 
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(result.String())
 }

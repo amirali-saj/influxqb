@@ -1,4 +1,4 @@
-package qb
+package influxqb
 
 import (
 	"encoding/json"
@@ -46,15 +46,6 @@ func (i *Indexer) setData(data []client.Result) {
 
 func (i *Indexer) AddData(data []client.Result) {
 	i.data = append(i.data, data...)
-	//	i.indexes = map[string]int{}
-	//	i.config = map[string]map[string]interface{}{}
-	//	i.summary = models.Row {
-	//		Tags:    map[string]string{},
-	//		Columns: []string{},
-	//		Values:  [][]interface{}{},
-	//	}
-
-	//offset := len(i.summary.Values)
 	for index, Row := range data {
 		if Row.Series != nil {
 			if len(Row.Series[0].Columns) == 2 && len(Row.Series[0].Values) != 1 {

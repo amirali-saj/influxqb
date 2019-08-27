@@ -1,4 +1,4 @@
-package inflx
+package influxqb
 
 import (
 	"github.com/influxdata/influxdb1-client/v2"

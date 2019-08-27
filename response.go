@@ -1,4 +1,4 @@
-package qb
+package influxqb
 
 import "github.com/mdaliyan/govert"
 
@@ -6,7 +6,7 @@ type DataSets map[string]DataSet
 
 func (d DataSets) Get(name string) DataSet {
 	dataset, ok := d[name]
-	if ! ok {
+	if !ok {
 		return DataSet{}
 	}
 	return dataset
