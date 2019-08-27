@@ -6,7 +6,9 @@ import (
 )
 
 func main() {
-	inflx.Client = inflx.NewClient("http://localhost:8086", "", "")
+	cl := inflx.NewHTTPClient("http://localhost:8086", "", "")
+	qr := inflx.NewQueryRunner(cl)
+
 	publishersQuery1 := inflx.NewQuery("sanjagh", "", "publishers").
 		Where(`time > now()- 10d`).
 		//GroupBy(`time(1d)`).
@@ -56,7 +58,6 @@ func main() {
 		Summary("hr_salary_budget", "sum(salary)").
 		Summary("minimum_salary", "min(salary)")
 
-	qr := inflx.NewQr()
 	qr.Add(employeesQuery1).
 		Add(publishersQuery1).
 		Add(publishersQuery2)

@@ -1,6 +1,7 @@
 package influxqb
 
 import (
+	"errors"
 	"time"
 
 	influx "github.com/influxdata/influxdb1-client/v2"
@@ -18,4 +19,17 @@ func NewStatisticPoint(TAGS map[string]string, fields map[string]interface{}) (*
 	t := time.Now()
 	fields["timestamp"] = t.UnixNano()
 	return influx.NewPoint("statistics", TAGS, fields, t)
+}
+
+func NewHTTPClient(Host, Username, Password string) influx.Client {
+	var err error
+	c, err := influx.NewHTTPClient(influx.HTTPConfig{
+		Addr:     Host,
+		Username: Username,
+		Password: Password,
+	})
+	if err != nil {
+		panic(errors.New("influx connection: " + err.Error()))
+	}
+	return c
 }

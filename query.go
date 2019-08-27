@@ -2,15 +2,16 @@ package influxqb
 
 import (
 	"github.com/influxdata/influxdb1-client/v2"
+	inflx "github.com/influxdata/influxdb1-client/v2"
 )
 
 // queryDB convenience function to query the database
-func Query(db, cmd string) (response *client.Response, res []client.Result, err error) {
+func Query(cl inflx.Client, db, cmd string) (response *client.Response, res []client.Result, err error) {
 	q := client.Query{
 		Command:  cmd,
 		Database: db,
 	}
-	if response, err = Client.Query(q); err == nil {
+	if response, err = cl.Query(q); err == nil {
 		if response.Error() != nil {
 			return response, res, response.Error()
 		}
