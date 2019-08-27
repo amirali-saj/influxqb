@@ -8,11 +8,13 @@ import (
 	"github.com/mdaliyan/influxqb/qb"
 )
 
-func ExecuteQueries(queries ...*qb.HistogramBuilder) {
+func ExecuteQueries(queries ...*qb.HistogramBuilder) *qb.Indexer {
 
 	var res *qb.Indexer
+
 	for i, query := range queries {
 		r, _ := Do(query)
+		fmt.Println("\n"+query.Database+"."+query.Measurement, "{\n", r, "\n}")
 
 		if i == 0 {
 			res = qb.NewHistogramData(r)
@@ -20,10 +22,10 @@ func ExecuteQueries(queries ...*qb.HistogramBuilder) {
 		}
 		res.AddData(r)
 	}
+	return res
 }
 
 func Do(h *qb.HistogramBuilder) (r []cl.Result, err error) {
-	fmt.Println("{{", h.Query(), "}}")
 	_, results, err := inflx.Query(h.Database, h.Query())
 	if err == nil {
 		if results[0].Err != "" {

@@ -18,7 +18,7 @@ func NewQuery(database, retentionPolicy, measurement string) *HistogramBuilder {
 
 type HistogramBuilder struct {
 	Database    string
-	measurement string
+	Measurement string
 	timeRange   string
 	fill        string
 	groupBy     string
@@ -61,7 +61,7 @@ func (h *HistogramBuilder) buildQuery(set map[string]string, groupBy string) str
 		}
 		selects = append(selects, sel)
 	}
-	q := `select ` + strings.Join(selects, ", ") + ` from ` + h.measurement
+	q := `select ` + strings.Join(selects, ", ") + ` from ` + h.Measurement
 	if h.where != nil {
 		q += ` where ` + strings.Join(h.where, " and ")
 	}
@@ -79,7 +79,7 @@ func (h *HistogramBuilder) From(rpName, measurement string) *HistogramBuilder {
 		rpName += "."
 	}
 
-	h.measurement = rpName + measurement
+	h.Measurement = rpName + measurement
 	return h
 }
 

@@ -2,6 +2,7 @@ package qb
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/influxdata/influxdb1-client/models"
 	"github.com/influxdata/influxdb1-client/v2"
@@ -44,7 +45,7 @@ func (i *Indexer) setData(data []client.Result) {
 }
 
 func (i *Indexer) AddData(data []client.Result) {
-	i.data = data
+	i.data = append(i.data, data...)
 	//	i.indexes = map[string]int{}
 	//	i.config = map[string]map[string]interface{}{}
 	//	i.summary = models.Row {
@@ -53,19 +54,24 @@ func (i *Indexer) AddData(data []client.Result) {
 	//		Values:  [][]interface{}{},
 	//	}
 
+	//offset := len(i.summary.Values)
 	for index, Row := range data {
 		if Row.Series != nil {
 			if len(Row.Series[0].Columns) == 2 && len(Row.Series[0].Values) != 1 {
 				// it's time dataSets
-				i.indexes[Row.Series[0].Columns[1]] = index
+				i.indexes[Row.Series[0].Columns[1]] = index //+offset
 			} else {
-				// it's summary     //= Row.Series[0]
+				// it's summary
+				if i.summary.Tags == nil {
+					i.summary.Tags = map[string]string{}
+				}
 				for k, v := range Row.Series[0].Tags {
 					i.summary.Tags[k] = v
-
 				}
 				i.summary.Columns = append(i.summary.Columns, Row.Series[0].Columns...)
-				i.summary.Values = append(i.summary.Values, Row.Series[0].Values...)
+				for j := range i.summary.Values {
+					i.summary.Values[j] = append(i.summary.Values[j], Row.Series[0].Values[j]...)
+				}
 			}
 		}
 	}
@@ -95,7 +101,6 @@ func (i *Indexer) GetSummaryValue(key string) json.Number {
 		if name == key {
 			val := i.summary.Values[0][index]
 			if val != nil {
-				// fmt.Println(reflect.TypeOf(val).String() == "json.Number")
 				return val.(json.Number)
 			} else {
 				return json.Number("0")
@@ -114,3 +119,22 @@ func (i *Indexer) GetSummaryValue(key string) json.Number {
 // 	defer i.l.Unlock()
 // 	return
 // }
+func (i *Indexer) String() (str string) {
+
+	if i == nil {
+		str = "[empty indexer]"
+		return
+	}
+	str = ""
+	str += fmt.Sprintln("\nSeries:")
+	for _, result := range i.data {
+		str += fmt.Sprintln(result.Series[0])
+	}
+	str += fmt.Sprintln("\nSummary:")
+	j := 0
+	for k, v := range i.GetSummary() {
+		str += fmt.Sprintln(j, ". ", k, " : ", v)
+		j++
+	}
+	return
+}

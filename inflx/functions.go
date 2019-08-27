@@ -2,7 +2,6 @@ package inflx
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	influx "github.com/influxdata/influxdb1-client/v2"
@@ -26,7 +25,7 @@ func NewClient(Host, Username, Password string) influx.Client {
 func NewBatchPoints(db string) (influx.BatchPoints, error) {
 	bp, err := influx.NewBatchPoints(influx.BatchPointsConfig{Database: db})
 	if err != nil {
-		fmt.Println(err)
+		panic(err)
 	}
 	return bp, err
 }
