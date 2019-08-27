@@ -1,6 +1,8 @@
 package influxqb
 
-import "github.com/mdaliyan/govert"
+import (
+	"github.com/mdaliyan/govert"
+)
 
 type dataSets map[string]dataSet
 
@@ -41,11 +43,12 @@ type response struct {
 	DataSets dataSets               `json:"sets"`
 }
 
-type walker func(interface{}) interface{}
+type walker func(interface{})
 
-func (r *response) Walk(as string, calc walker) {
-	for _, dataset := range r.DataSets {
-		r.Summary[as] = calc(dataset)
+func (r *response) Walk(on string, calc walker) {
+
+	for _, d := range r.DataSets[on] {
+		calc(d[1])
 	}
 }
 
