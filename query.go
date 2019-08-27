@@ -6,12 +6,12 @@ import (
 )
 
 // queryDB convenience function to query the database
-func Query(cl inflx.Client, db, cmd string) (response *client.Response, res []client.Result, err error) {
+func query(cl *inflx.Client, db, cmd string) (response *client.Response, res []client.Result, err error) {
 	q := client.Query{
 		Command:  cmd,
 		Database: db,
 	}
-	if response, err = cl.Query(q); err == nil {
+	if response, err = (*cl).Query(q); err == nil {
 		if response.Error() != nil {
 			return response, res, response.Error()
 		}

@@ -6,18 +6,18 @@ import (
 )
 
 type QueryRunner struct {
-	Client  influx.Client
-	queries []*HistogramBuilder
+	client  *influx.Client
+	queries []*QueryBuilder
 }
 
-func NewQueryRunner(client influx.Client) *QueryRunner {
+func NewQueryRunner(client *influx.Client) *QueryRunner {
 	qr := QueryRunner{}
-	qr.Client = client
+	qr.client = client
 	return &qr
 }
 
-func (qr *QueryRunner) Add(query *HistogramBuilder) *QueryRunner {
-	qr.queries = append(qr.queries, query)
+func (qr *QueryRunner) Add(q *QueryBuilder) *QueryRunner {
+	qr.queries = append(qr.queries, q)
 	return qr
 }
 
@@ -28,18 +28,19 @@ func (qr *QueryRunner) ExecuteQueries() (res *Indexer, err error) {
 		err = queryErr
 
 		if i == 0 {
-			res = NewHistogramData(r)
+			res = newHistogramData(r)
 			continue
 		}
-		res.AddData(r)
+		res.addData(r)
 	}
 
 	return
 }
 
-func (qr *QueryRunner) Do(h *HistogramBuilder) (r []influx.Result, err error) {
+//Runs a single QueryBuilder's query.
+func (qr *QueryRunner) Do(q *QueryBuilder) (r []influx.Result, err error) {
 
-	_, results, err := Query(qr.Client, h.Database, h.Query())
+	_, results, err := query(qr.client, q.database, q.Query())
 	if err == nil {
 		if results[0].Err != "" {
 			err = errors.New(results[0].Err)

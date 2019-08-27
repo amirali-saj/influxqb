@@ -7,7 +7,7 @@ import (
 
 func main() {
 	cl := inflx.NewHTTPClient("http://localhost:8086", "", "")
-	qr := inflx.NewQueryRunner(cl)
+	qr := inflx.NewQueryRunner(&cl)
 
 	publishersQuery1 := inflx.NewQuery("sanjagh", "", "publishers").
 		Where(`time > now()- 10d`).
@@ -67,5 +67,5 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Println(result.String())
+	fmt.Println(result)
 }

@@ -16,7 +16,7 @@ type Indexer struct {
 	summary models.Row
 }
 
-func NewHistogramData(data []client.Result) *Indexer {
+func newHistogramData(data []client.Result) *Indexer {
 	i := Indexer{}
 	i.setData(data)
 	return &i
@@ -44,7 +44,7 @@ func (i *Indexer) setData(data []client.Result) {
 	}
 }
 
-func (i *Indexer) AddData(data []client.Result) {
+func (i *Indexer) addData(data []client.Result) {
 	i.data = append(i.data, data...)
 	for index, Row := range data {
 		if Row.Series != nil {
@@ -101,15 +101,6 @@ func (i *Indexer) GetSummaryValue(key string) json.Number {
 	return json.Number("0")
 }
 
-// func (i *Indexer) Index(s string) (index int) {
-// 	i.l.Lock()
-// 	index, ok := i.m[s]
-// 	if ! ok {
-// 		index = -1
-// 	}
-// 	defer i.l.Unlock()
-// 	return
-// }
 func (i *Indexer) String() (str string) {
 
 	if i == nil {
