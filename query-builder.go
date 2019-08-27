@@ -6,8 +6,8 @@ import (
 	"github.com/influxdata/influxdb/models"
 )
 
-func NewQuery(database, retentionPolicy, measurement string) *QueryBuilder {
-	q := QueryBuilder{}
+func NewQuery(database, retentionPolicy, measurement string) *queryBuilder {
+	q := queryBuilder{}
 	q.database = database
 	q.From(retentionPolicy, measurement)
 	q.summaries = map[string]string{}
@@ -15,7 +15,7 @@ func NewQuery(database, retentionPolicy, measurement string) *QueryBuilder {
 	return &q
 }
 
-type QueryBuilder struct {
+type queryBuilder struct {
 	database    string
 	measurement string
 	timeRange   string
@@ -25,10 +25,10 @@ type QueryBuilder struct {
 	sum         models.Row
 	dataSets    map[string]string
 	summaries   map[string]string
-	response    *Indexer
+	response    *queryResult
 }
 
-func (query *QueryBuilder) Query() string {
+func (query *queryBuilder) Query() string {
 	var queries []string
 	for key, field := range query.dataSets {
 		queries = append(queries, query.buildQuery(map[string]string{key: field}, query.groupBy))
@@ -39,7 +39,7 @@ func (query *QueryBuilder) Query() string {
 	return strings.Join(queries, ";\n")
 }
 
-func (query *QueryBuilder) buildQuery(set map[string]string, groupBy string) string {
+func (query *queryBuilder) buildQuery(set map[string]string, groupBy string) string {
 	var selects []string
 	for key, filed := range set {
 		sel := filed
@@ -61,7 +61,7 @@ func (query *QueryBuilder) buildQuery(set map[string]string, groupBy string) str
 	return q
 }
 
-func (query *QueryBuilder) From(rpName, measurement string) *QueryBuilder {
+func (query *queryBuilder) From(rpName, measurement string) *queryBuilder {
 	if rpName != "" {
 		rpName += "."
 	}
@@ -70,57 +70,57 @@ func (query *QueryBuilder) From(rpName, measurement string) *QueryBuilder {
 	return query
 }
 
-func (query *QueryBuilder) DataSet(as, field string) *QueryBuilder {
+func (query *queryBuilder) DataSet(as, field string) *queryBuilder {
 	query.dataSets[as] = field
 	return query
 }
 
-func (query *QueryBuilder) Summary(as, field string) *QueryBuilder {
+func (query *queryBuilder) Summary(as, field string) *queryBuilder {
 	query.summaries[as] = field
 	return query
 }
 
-func (query *QueryBuilder) GroupBy(s string) *QueryBuilder {
+func (query *queryBuilder) GroupBy(s string) *queryBuilder {
 	query.groupBy = " " + s + " "
 	return query
 }
 
-func (query *QueryBuilder) GroupMinutely(rpName string) *QueryBuilder {
+func (query *queryBuilder) GroupMinutely(rpName string) *queryBuilder {
 	query.From(rpName, "minutely.statistics")
 	query.groupBy = " time(60s) "
 	return query
 }
 
-func (query *QueryBuilder) GroupHourly(rpName string) *QueryBuilder {
+func (query *queryBuilder) GroupHourly(rpName string) *queryBuilder {
 	query.From(rpName, "hourly.statistics")
 	query.groupBy = " time(1h) "
 	return query
 }
 
-func (query *QueryBuilder) GroupDaily(rpName string) *QueryBuilder {
+func (query *queryBuilder) GroupDaily(rpName string) *queryBuilder {
 	query.From(rpName, "daily.statistics")
 	query.groupBy = " time(1d) "
 	return query
 }
 
-func (query *QueryBuilder) GroupMonthly(rpName string) *QueryBuilder {
+func (query *queryBuilder) GroupMonthly(rpName string) *queryBuilder {
 	query.From(rpName, "daily.statistics")
 	query.groupBy = " time(30d) "
 	return query
 }
 
-func (query *QueryBuilder) GroupYearly(rpName string) *QueryBuilder {
+func (query *queryBuilder) GroupYearly(rpName string) *queryBuilder {
 	query.From(rpName, "daily.statistics")
 	query.groupBy = " time(365d) "
 	return query
 }
 
-func (query *QueryBuilder) Fill(s string) *QueryBuilder {
+func (query *queryBuilder) Fill(s string) *queryBuilder {
 	query.fill = s
 	return query
 }
 
-func (query *QueryBuilder) Where(s string) *QueryBuilder {
+func (query *queryBuilder) Where(s string) *queryBuilder {
 	query.where = append(query.where, " "+s+" ")
 	return query
 }

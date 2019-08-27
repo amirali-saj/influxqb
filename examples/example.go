@@ -7,8 +7,10 @@ import (
 
 func main() {
 	cl := inflx.NewHTTPClient("http://localhost:8086", "", "")
-	qr := inflx.NewQueryRunner(&cl)
-
+	qr, err := inflx.NewQueryRunner(&cl)
+	if err != nil {
+		panic(err)
+	}
 	publishersQuery1 := inflx.NewQuery("sanjagh", "", "publishers").
 		Where(`time > now()- 10d`).
 		//GroupBy(`time(1d)`).

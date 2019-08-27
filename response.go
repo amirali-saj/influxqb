@@ -2,33 +2,33 @@ package influxqb
 
 import "github.com/mdaliyan/govert"
 
-type DataSets map[string]DataSet
+type dataSets map[string]dataSet
 
-func (d DataSets) Get(name string) DataSet {
+func (d dataSets) Get(name string) dataSet {
 	dataset, ok := d[name]
 	if !ok {
-		return DataSet{}
+		return dataSet{}
 	}
 	return dataset
 }
 
-type DataSet [][]interface{}
+type dataSet [][]interface{}
 
-func (ds DataSet) Points() (p []interface{}) {
+func (ds dataSet) Points() (p []interface{}) {
 	for _, value := range ds {
 		p = append(p, value[1])
 	}
 	return
 }
 
-func (ds DataSet) Point(index int) interface{} {
+func (ds dataSet) Point(index int) interface{} {
 	if index > len(ds) {
 		return nil
 	}
 	return ds[index]
 }
 
-func (ds DataSet) LastPoint() interface{} {
+func (ds dataSet) LastPoint() interface{} {
 	ind := len(ds)
 	if ind == 0 {
 		return nil
@@ -36,18 +36,18 @@ func (ds DataSet) LastPoint() interface{} {
 	return ds[len(ds)-1]
 }
 
-type Response struct {
+type response struct {
 	Summary  map[string]interface{} `json:"summary"`
-	DataSets DataSets               `json:"sets"`
+	DataSets dataSets               `json:"sets"`
 }
 
-type Walker func(dataSets DataSets) interface{}
+type walker func(dataSets dataSets) interface{}
 
-func (r *Response) Calculate(as string, calc Walker) {
+func (r *response) Calculate(as string, calc walker) {
 	r.Summary[as] = calc(r.DataSets)
 }
 
-func (r *Response) Sum(from ...string) float64 {
+func (r *response) Sum(from ...string) float64 {
 	var sum float64
 	for _, fieldName := range from {
 		for _, point := range r.DataSets.Get(fieldName).Points() {
@@ -57,6 +57,6 @@ func (r *Response) Sum(from ...string) float64 {
 	return sum
 }
 
-func (r *Response) SetSummary(as string, data interface{}) {
+func (r *response) SetSummary(as string, data interface{}) {
 	r.Summary[as] = data
 }

@@ -3,25 +3,26 @@ package influxqb
 import (
 	"errors"
 	influx "github.com/influxdata/influxdb1-client/v2"
+	"time"
 )
 
-type QueryRunner struct {
+type queryRunner struct {
 	client  *influx.Client
-	queries []*QueryBuilder
+	queries []*queryBuilder
 }
 
-func NewQueryRunner(client *influx.Client) *QueryRunner {
-	qr := QueryRunner{}
+func NewQueryRunner(client *influx.Client) (*queryRunner, error) {
+	qr := queryRunner{}
 	qr.client = client
-	return &qr
+	return &qr, GetClientError(client)
 }
 
-func (qr *QueryRunner) Add(q *QueryBuilder) *QueryRunner {
+func (qr *queryRunner) Add(q *queryBuilder) *queryRunner {
 	qr.queries = append(qr.queries, q)
 	return qr
 }
 
-func (qr *QueryRunner) ExecuteQueries() (res *Indexer, err error) {
+func (qr *queryRunner) ExecuteQueries() (res *queryResult, err error) {
 
 	for i, query := range qr.queries {
 		r, queryErr := qr.Do(query)
@@ -37,8 +38,8 @@ func (qr *QueryRunner) ExecuteQueries() (res *Indexer, err error) {
 	return
 }
 
-//Runs a single QueryBuilder's query.
-func (qr *QueryRunner) Do(q *QueryBuilder) (r []influx.Result, err error) {
+//Runs a single queryBuilder's query.
+func (qr *queryRunner) Do(q *queryBuilder) (r []influx.Result, err error) {
 
 	_, results, err := query(qr.client, q.database, q.Query())
 	if err == nil {
@@ -48,4 +49,14 @@ func (qr *QueryRunner) Do(q *QueryBuilder) (r []influx.Result, err error) {
 		}
 	}
 	return results, err
+}
+
+func GetClientError(client *influx.Client) error {
+	if client == nil {
+		return errors.New("nil pointer to client")
+	}
+	if _, _, err := (*client).Ping(700 * time.Millisecond); err != nil {
+		return err
+	}
+	return nil
 }
