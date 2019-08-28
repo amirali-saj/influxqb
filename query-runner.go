@@ -41,6 +41,9 @@ func (qr *queryRunner) ExecuteQueries() (resp *response, err error) {
 //Runs a single queryBuilder's query.
 func (qr *queryRunner) Do(q *queryBuilder) (r []influx.Result, err error) {
 
+	if err := GetClientError(qr.client); err != nil {
+		return r, err
+	}
 	_, results, err := query(qr.client, q.database, q.String())
 	if err == nil {
 		if results[0].Err != "" {

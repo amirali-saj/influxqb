@@ -72,6 +72,16 @@ func (r *response) Count(from ...string) int {
 	return count
 }
 
+func (r *response) V(from ...string) int {
+	var count int
+	for _, fieldName := range from {
+		for range r.DataSets.Get(fieldName).Points() {
+			count++
+		}
+	}
+	return count
+}
+
 func (r *response) SetSummary(as string, data interface{}) {
 	r.Summary[as] = data
 }
