@@ -77,7 +77,9 @@ func (ugr *ungroupedResult) Group(tag string) (*groupedResult, error) {
 
 	return &gr, nil
 }
-
+func getString(value interface{}) string {
+	return fmt.Sprint(value)
+}
 func (ugr *ungroupedResult) String() string {
 	return fmt.Sprint("{", ugr.rows, "}")
 }
@@ -87,24 +89,19 @@ func NewResult(r []influx.Result) Result {
 	res.rows = make([]map[string]string, 0)
 
 	for _, s := range r[0].Series {
-		res.rows = append(res.rows, s.Tags)
+		row := make(map[string]string)
+		row = appendMap(row, s.Tags)
+		for i, col := range s.Columns {
+			row[col] = getString(s.Values[len(s.Values)-1][i])
+		}
+		res.rows = append(res.rows, row)
 	}
 	return &res
 }
 
-//func (rg *resultGroup) Get(key string) (Result resultGroup, found bool) {
-//	Result, found = rg.SubGroups[key]
-//	return
-//}
-
-//func (rg *resultGroup) AddSubGroup(name string, subGroup resultGroup) {
-//	rg.SubGroups[name] = subGroup
-//}
-
-//func (rg *resultGroup) ListSubGroups() (list []string) {
-//
-//	for k := range rg.SubGroups {
-//		list = append(list, k)
-//	}
-//	return
-//}
+func appendMap(map1, map2 map[string]string) map[string]string {
+	for k, v := range map2 {
+		map1[k] = v
+	}
+	return map1
+}
