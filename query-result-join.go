@@ -7,18 +7,19 @@ import (
 	influx "github.com/influxdata/influxdb1-client/v2"
 )
 
-func Join(result1, result2 influx.Result, tags, columns []string) (influx.Result, error) {
-
+func Join(result1, result2 influx.Result, tags, columns []string, fieldNilFiller interface{}, tagNilFiller string) (influx.Result, error) {
 	joinedResult := influx.Result{}
 
 	joinedResult.Series = make([]models.Row, 0)
+
 	if len(result1.Series) == 0 || len(result2.Series) == 0 {
 		return joinedResult, errors.New("one of inserted results has zero rows")
 	}
 
+	//merge columns
 	joinedResultColumns := mergeColumns(result1.Series[0].Columns, result2.Series[0].Columns)
-	joinedResultTags := appendMaps(result1.Series[0].Tags, result2.Series[0].Tags)
 
+	//find indices of columns used for join operation in joinedResult columns
 	joinColumnIndices := make([]int, 0)
 	for _, col := range columns {
 		index, found := findIndex(joinedResultColumns, col)
@@ -28,54 +29,234 @@ func Join(result1, result2 influx.Result, tags, columns []string) (influx.Result
 		joinColumnIndices = append(joinColumnIndices, index)
 	}
 
-	series1 := append(result1.Series)
-	series2 := append(result2.Series)
+	//Table that shows which two series were merged together. Used for expanding lonely series so they fit result's schema (columns).
+	joined := make([][]bool, 0)
+	for i := range result1.Series {
+		joined = append(joined, make([]bool, 0))
+		for range result2.Series {
+			joined[i] = append(joined[i], false)
+		}
+	}
+	//AllTags includes at the end merge of tags of both results being joined with nil filler value when expanding lonely series.
 
-	for i, s1 := range series1 {
-		for j, s2 := range series2 {
+	allTags := make(map[string]string)
+
+	//Joins series with matching tags.
+
+	for i, s1 := range result1.Series {
+		for j, s2 := range result2.Series {
 			if matchTags(s1, s2, tags) {
-				joinedRow, success := joinRows(s1, s2, joinColumnIndices, joinedResultColumns, joinedResultTags)
-				if success {
-					joinedResult.Series = append(joinedResult.Series, joinedRow)
+				joinedResultTags := appendMaps(s1.Tags, s2.Tags)
+				allTags = appendMaps(map[string]string{}, joinedResultTags)
 
-					series1[i].Name = "<used>"
-					series2[j].Name = "<used>"
-				}
+				joinedRow := joinRows(s1, s2, joinColumnIndices, joinedResultColumns, joinedResultTags, fieldNilFiller)
+				joinedResult.Series = append(joinedResult.Series, joinedRow)
+				joined[i][j] = true
 			}
 		}
 	}
 
-	for _, s1 := range series2 {
-		if s1.Name == "<used>" {
+	//Joins lonely series.
+
+	for i := range allTags {
+		allTags[i] = tagNilFiller
+	}
+	for i := 0; i < len(result2.Series); i++ {
+		isLonely := true
+		for j := 0; j < len(joined); j++ {
+			if joined[j][i] {
+				isLonely = false
+				break
+			}
+		}
+		if isLonely {
+			joinedResult.Series = append(joinedResult.Series, expandRow(result2.Series[i], joinedResultColumns, allTags, fieldNilFiller))
 			continue
 		}
-		joinedResult.Series = append(joinedResult.Series, expandRow(s1, joinedResultColumns, joinedResultTags))
 	}
 
-	for _, s2 := range series2 {
-		if s2.Name == "<used>" {
+	for i := range allTags {
+		allTags[i] = tagNilFiller
+	}
+	for i := 0; i < len(result1.Series); i++ {
+		aloneValue := true
+		for j := 0; j < len(result2.Series); j++ {
+			if joined[i][j] {
+				aloneValue = false
+				break
+			}
+		}
+		if aloneValue {
+			joinedResult.Series = append(joinedResult.Series, expandRow(result1.Series[i], joinedResultColumns, allTags, fieldNilFiller))
 			continue
 		}
-		joinedResult.Series = append(joinedResult.Series, expandRow(s2, joinedResultColumns, joinedResultTags))
 	}
+
 	return joinedResult, nil
 }
 
-func joinRows(row1, row2 models.Row, indices []int, columns []string, tags map[string]string) (models.Row, bool) {
+func joinRows(row1, row2 models.Row, indices []int, columns []string, tags map[string]string, fillerObject interface{}) models.Row {
 	joinedRow := models.Row{}
 	joinedRow.Tags = tags
 	joinedRow.Columns = columns
-	for _, ts1 := range row1.Values {
-		for _, ts2 := range row2.Values {
-			for _, index := range indices {
-				if ts1[index] != ts2[index] {
-					return joinedRow, false
-				}
+
+	values1 := append(row1.Values)
+	values2 := append(row2.Values)
+
+	row1Indices := make([]int, len(columns))
+	row2Indices := make([]int, len(columns))
+
+	for index := range columns {
+		var found bool
+		for i := range row1.Columns {
+			if columns[index] == row1.Columns[i] {
+				row1Indices[index] = i
+				found = true
+				break
 			}
-			joinedRow.Values = append(joinedRow.Values, mergeInterfaceSlices(ts1, ts2))
+			if !found {
+				row1Indices[index] = -1
+			}
 		}
 	}
-	return joinedRow, true
+
+	for index := range columns {
+		var found bool
+		for i := range row2.Columns {
+			if columns[index] == row2.Columns[i] {
+				row2Indices[index] = i
+				found = true
+				break
+			}
+			if !found {
+				row2Indices[index] = -1
+			}
+		}
+	}
+
+	joined := make([][]bool, 0)
+	for i := range row1.Values {
+		joined = append(joined, make([]bool, 0))
+		for range row2.Values {
+			joined[i] = append(joined[i], false)
+		}
+	}
+
+	for i, v1 := range values1 {
+		for j, v2 := range values2 {
+			if joined[i][j] {
+				continue
+			}
+
+			if matchFields(v1, v2, indices) {
+				joinedRow.Values = append(joinedRow.Values, mergeValues(v1, v2, indices))
+				joined[i][j] = true
+			}
+
+		}
+		aloneValue := true
+		for _, value := range joined[i] {
+			if value {
+				aloneValue = false
+				break
+			}
+		}
+		if aloneValue {
+			joinedRow.Values = append(joinedRow.Values, expandValue(v1, columns, row1Indices, fillerObject))
+			continue
+		}
+	}
+
+	for i := 0; i < len(row2.Values); i++ {
+		aloneValue := true
+		for j := 0; j < len(joined); j++ {
+			if joined[j][i] {
+				aloneValue = false
+				break
+			}
+		}
+		if aloneValue {
+			joinedRow.Values = append(joinedRow.Values, expandValue(values2[i], columns, row2Indices, fillerObject))
+			continue
+		}
+	}
+
+	return joinedRow
+}
+
+//Expands a row to match desired schema. (columns)
+
+func expandRow(row models.Row, columns []string, allTags map[string]string, fieldFiller interface{}) models.Row {
+	expandedRow := models.Row{}
+	expandedRow.Tags = appendMaps(allTags, row.Tags)
+	expandedRow.Columns = columns
+	valueColumnsIndices := make([]int, len(columns))
+	for index, col := range columns {
+		var found bool
+		for i, col2 := range row.Columns {
+			if col2 == col {
+				valueColumnsIndices[index] = i
+				found = true
+				break
+			}
+		}
+		if !found {
+			valueColumnsIndices[index] = -1
+		}
+
+	}
+	expandedRow.Values = make([][]interface{}, 0)
+	for _, val := range row.Values {
+		expandedRow.Values = append(expandedRow.Values, expandValue(val, columns, valueColumnsIndices, fieldFiller))
+	}
+
+	return expandedRow
+}
+
+//Expands a value to match desired schema. (columns)  (value means result.series[i].values[j])
+func expandValue(value []interface{}, columns []string, valueColumnsIndices []int, fillerObject interface{}) []interface{} {
+	expandedValue := make([]interface{}, len(columns))
+	for index := range columns {
+		if valueColumnsIndices[index] == -1 {
+			expandedValue[index] = fillerObject
+			continue
+		}
+
+		expandedValue[index] = value[valueColumnsIndices[index]]
+	}
+	return expandedValue
+}
+
+func mergeValues(value1, value2 []interface{}, indices []int) []interface{} {
+	mergedValue := append(value1)
+
+	for i, field := range value2 {
+		if !containsInt(indices, i) {
+			mergedValue = append(mergedValue, field)
+		}
+	}
+	return mergedValue
+}
+
+func containsInt(slice []int, number int) bool {
+	for _, element := range slice {
+		if element == number {
+			return true
+		}
+	}
+	return false
+}
+
+func matchFields(value1, value2 []interface{}, indices []int) bool {
+	for _, index := range indices {
+		if len(value1) <= index || len(value2) <= index {
+			continue
+		}
+		if value1[index] != value2[index] {
+			return false
+		}
+	}
+	return true
 }
 
 func matchTags(row1, row2 models.Row, tags []string) bool {
@@ -87,39 +268,10 @@ func matchTags(row1, row2 models.Row, tags []string) bool {
 	return true
 }
 
-func expandRow(row1 models.Row, columns []string, tags map[string]string) models.Row {
-	joinedRow := models.Row{}
-	joinedRow.Tags = tags
-	joinedRow.Columns = columns
-	nilIndices := make([]int, 0)
-	for i, col := range columns {
-		if !contains(row1.Columns, col) {
-			nilIndices = append(nilIndices, i)
-		}
-	}
-	for _, ts1 := range row1.Values {
-		for _, index := range nilIndices {
-			ts1[index] = 0
-		}
-		joinedRow.Values = append(joinedRow.Values, ts1)
-	}
-	return joinedRow
-}
-
 func mergeColumns(columns1, columns2 []string) []string {
 	newColumns := append(columns1)
 	for _, col2 := range columns2 {
 		if !contains(columns1, col2) {
-			newColumns = append(newColumns, col2)
-		}
-	}
-	return newColumns
-}
-
-func mergeInterfaceSlices(columns1, columns2 []interface{}) []interface{} {
-	newColumns := append(columns1)
-	for _, col2 := range columns2 {
-		if !containsInterface(columns1, col2) {
 			newColumns = append(newColumns, col2)
 		}
 	}
