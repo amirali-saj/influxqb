@@ -7,31 +7,37 @@ import (
 	"time"
 )
 
-type InfluxClientMock struct {
-	dbs map[string]*InfluxDbMock
+type influxClientMock struct {
+	dbs map[string]*influxDbMock
 }
 
-type InfluxDbMock struct {
-	measurements map[string]*InfluxMeasurementMock
+type influxDbMock struct {
+	measurements map[string]*influxMeasurementMock
 }
-type InfluxMeasurementMock struct {
+type influxMeasurementMock struct {
 	rows []models.Row
 }
 
-func (icm *InfluxClientMock) Init() {
-	icm.dbs = make(map[string]*InfluxDbMock)
+func NewInfluxClientMock() influxClientMock {
+	cl := influxClientMock{}
+	cl.Init()
+	return cl
 }
 
-func (icm *InfluxClientMock) CreateDb(dbName string) {
-	db := &InfluxDbMock{measurements: make(map[string]*InfluxMeasurementMock)}
+func (icm *influxClientMock) Init() {
+	icm.dbs = make(map[string]*influxDbMock)
+}
+
+func (icm *influxClientMock) CreateDb(dbName string) {
+	db := &influxDbMock{measurements: make(map[string]*influxMeasurementMock)}
 	icm.dbs[dbName] = db
 }
 
-func (icm *InfluxClientMock) Ping(timeout time.Duration) (time.Duration, string, error) {
+func (icm *influxClientMock) Ping(timeout time.Duration) (time.Duration, string, error) {
 	return 0 * time.Second, "1.7.7", nil
 }
 
-func (icm *InfluxClientMock) Query(q influx.Query) (*influx.Response, error) {
+func (icm *influxClientMock) Query(q influx.Query) (*influx.Response, error) {
 	resp := influx.Response{}
 	resp.Err = ""
 	words := strings.Split(q.Command, " ")
@@ -56,30 +62,56 @@ func (icm *InfluxClientMock) Query(q influx.Query) (*influx.Response, error) {
 	return &resp, nil
 }
 
-func (idm *InfluxDbMock) CreateMeasurement(measurementName string) {
-	measurement := &InfluxMeasurementMock{rows: make([]models.Row, 0)}
+func (idm *influxDbMock) CreateMeasurement(measurementName string) {
+	measurement := &influxMeasurementMock{rows: make([]models.Row, 0)}
 	idm.measurements[measurementName] = measurement
 }
-func (imm *InfluxMeasurementMock) AddRow(row models.Row) {
+func (imm *influxMeasurementMock) AddRow(row models.Row) {
 	imm.rows = append(imm.rows, row)
 }
 
-func (icm *InfluxClientMock) CreateMeasurement(dbName, measurementName string) {
+func (icm *influxClientMock) CreateMeasurement(dbName, measurementName string) {
 	icm.dbs[dbName].CreateMeasurement(measurementName)
 }
 
-func (icm *InfluxClientMock) AddRowToMeasurement(dbName, measurementName string, row models.Row) {
+func (icm *influxClientMock) AddRowToMeasurement(dbName, measurementName string, row models.Row) {
 	icm.dbs[dbName].measurements[measurementName].AddRow(row)
 }
 
-func (icm *InfluxClientMock) Write(bp influx.BatchPoints) error {
+func (icm *influxClientMock) Write(bp influx.BatchPoints) error {
+	for _, point := range bp.Points() {
+		var pointWritten bool
+		fieldMap, err := point.Fields()
+		if err != nil {
+			return err
+		}
+		columns := make([]string, 0)
+		value := make([]interface{}, 0)
+		for k, v := range fieldMap {
+			columns = append(columns, k)
+			value = append(value, v)
+		}
+		newRow := models.Row{Tags: point.Tags(), Columns: columns}
+		for i, row := range icm.dbs[bp.Database()].measurements[point.Name()].rows {
+			if row.SameSeries(&newRow) {
+				icm.dbs[bp.Database()].measurements[point.Name()].rows[i].Values = append(icm.dbs[bp.Database()].measurements[point.Name()].rows[i].Values, value)
+				pointWritten = true
+				break
+			}
+		}
+		if !pointWritten {
+			newRow.Values = make([][]interface{}, 0)
+			newRow.Values = append(newRow.Values, value)
+			icm.dbs[bp.Database()].measurements[point.Name()].AddRow(newRow)
+		}
+	}
 	return nil
 }
 
-func (icm *InfluxClientMock) QueryAsChunk(q influx.Query) (*influx.ChunkedResponse, error) {
+func (icm *influxClientMock) QueryAsChunk(q influx.Query) (*influx.ChunkedResponse, error) {
 	return nil, nil
 }
 
-func (icm *InfluxClientMock) Close() error {
+func (icm *influxClientMock) Close() error {
 	return nil
 }
