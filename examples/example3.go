@@ -79,5 +79,7 @@ func main() {
 		panic(err)
 	}
 	m := mapInterface.(map[string]interface{})
+
+	//An example of using exported nested structure.
 	fmt.Println(m["media1"].(map[string]interface{})["ad1"].([]models.Row)[0].Tags["ad_type"])
 }
