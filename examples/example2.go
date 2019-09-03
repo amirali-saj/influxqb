@@ -78,7 +78,7 @@ func main() {
 	fmt.Println("Result of views query:", res)
 	fmt.Println("Result of clicks query:", res2)
 
-	//And you can use this
+	//And now we join the results.
 	joinedResult, err := inflx.Join(res[0], res2[0], []string{"ad_id"}, []string{"time"}, "nil-field", "nil-tag")
 
 	if err != nil {
