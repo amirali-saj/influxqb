@@ -1,8 +1,10 @@
 package influxqb
 
 import (
+	"fmt"
 	"github.com/influxdata/influxdb1-client/models"
 	influx "github.com/influxdata/influxdb1-client/v2"
+	"math/rand"
 	"strings"
 	"time"
 )
@@ -87,6 +89,12 @@ func (icm *influxClientMock) Write(bp influx.BatchPoints) error {
 		}
 		columns := make([]string, 0)
 		value := make([]interface{}, 0)
+		columns = append(columns, "time")
+		//Uncomment the following line if you were interested in using real time as time field value.
+		//value = append(value,time.Now())
+
+		value = append(value, fmt.Sprint(rand.Intn(4)*5))
+
 		for k, v := range fieldMap {
 			columns = append(columns, k)
 			value = append(value, v)
